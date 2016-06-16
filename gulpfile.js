@@ -167,8 +167,8 @@ gulp.task('fonts', function() {
 });
 
 gulp.task('bowertotmp', function() {
-return gulp.src(['app/bower_components/**/*'])
- .pipe(gulp.dest('.tmp/bower_components/'));
+  return gulp.src(['app/bower_components/**/*'])
+    .pipe(gulp.dest('.tmp/bower_components/'));
 });
 
 // Scan your HTML for assets & optimize them
@@ -287,8 +287,7 @@ gulp.task('serve:dist', ['default'], function() {
 gulp.task('default', ['clean'], function(cb) {
   // Uncomment 'cache-config' if you are going to use service workers.
   runSequence(
-    'bowertotmp'
-    ['ensureFiles', 'copy', 'styles'],
+    'bowertotmp' ['ensureFiles', 'copy', 'styles'],
     'js', ['images', 'fonts', 'html'],
     'vulcanize', // 'cache-config',
     cb);
