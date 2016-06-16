@@ -48,16 +48,28 @@ var dist = function(subpath) {
   return !subpath ? DIST : path.join(DIST, subpath);
 };
 
+gulp.task('js', function() {
+  return gulp.src(['app/**/*.{js,html}', '!app/bower_components/**/*'])
+    .pipe($.sourcemaps.init())
+    .pipe($.if('*.html', $.crisper({ scriptInHead: false }))) // Extract JS from .html files
+    .pipe($.if('*.js', $.babel({
+      presets: ['es2015', 'stage-0']
+    })))
+    .pipe($.sourcemaps.write('.'))
+    .pipe(gulp.dest('.tmp/'))
+    .pipe(gulp.dest(dist()));
+});
+
 var styleTask = function(stylesPath, srcs) {
   return gulp.src(srcs.map(function(src) {
       return path.join('app', stylesPath, src);
     }))
-    .pipe($.changed(stylesPath, {extension: '.css'}))
+    .pipe($.changed(stylesPath, { extension: '.css' }))
     .pipe($.autoprefixer(AUTOPREFIXER_BROWSERS))
     .pipe(gulp.dest('.tmp/' + stylesPath))
     .pipe($.minifyCss())
     .pipe(gulp.dest(dist(stylesPath)))
-    .pipe($.size({title: stylesPath}));
+    .pipe($.size({ title: stylesPath }));
 };
 
 var imageOptimizeTask = function(src, dest) {
@@ -67,7 +79,7 @@ var imageOptimizeTask = function(src, dest) {
       interlaced: true
     }))
     .pipe(gulp.dest(dest))
-    .pipe($.size({title: 'images'}));
+    .pipe($.size({ title: 'images' }));
 };
 
 var optimizeHtmlTask = function(src, dest) {
@@ -154,23 +166,28 @@ gulp.task('fonts', function() {
     }));
 });
 
+gulp.task('bowertotmp', function() {
+return gulp.src(['app/bower_components/**/*'])
+ .pipe(gulp.dest('.tmp/bower_components/'));
+});
+
 // Scan your HTML for assets & optimize them
 gulp.task('html', function() {
   return optimizeHtmlTask(
-    ['app/**/*.html', '!app/{elements,test,bower_components}/**/*.html'],
+    ['dist/**/*.html', '!dist/{elements,test,bower_components}/**/*.html'],
     dist());
 });
 
 // Vulcanize granular configuration
 gulp.task('vulcanize', function() {
-  return gulp.src('app/elements/elements.html')
+  return gulp.src('.tmp/elements/elements.html')
     .pipe($.vulcanize({
       stripComments: true,
       inlineCss: true,
       inlineScripts: true
     }))
     .pipe(gulp.dest(dist('elements')))
-    .pipe($.size({title: 'vulcanize'}));
+    .pipe($.size({ title: 'vulcanize' }));
 });
 
 // Generate config data for the <sw-precache-cache> element.
@@ -191,8 +208,8 @@ gulp.task('cache-config', function(callback) {
     'index.html',
     './',
     'bower_components/webcomponentsjs/webcomponents-lite.min.js',
-    '{elements,scripts,styles}/**/*.*'],
-    {cwd: dir}, function(error, files) {
+    '{elements,scripts,styles}/**/*.*'
+  ], { cwd: dir }, function(error, files) {
     if (error) {
       callback(error);
     } else {
@@ -214,7 +231,7 @@ gulp.task('clean', function() {
 });
 
 // Watch files for changes & reload
-gulp.task('serve', ['styles'], function() {
+gulp.task('serve', ['styles', 'js'], function() {
   browserSync({
     port: 5000,
     notify: false,
@@ -237,9 +254,9 @@ gulp.task('serve', ['styles'], function() {
     }
   });
 
-  gulp.watch(['app/**/*.html', '!app/bower_components/**/*.html'], reload);
+  gulp.watch(['app/**/*.html', '!app/bower_components/**/*.html'], ['js', reload]);
   gulp.watch(['app/styles/**/*.css'], ['styles', reload]);
-  gulp.watch(['app/scripts/**/*.js'], reload);
+  gulp.watch(['app/scripts/**/*.js'], ['js', reload]);
   gulp.watch(['app/images/**/*'], reload);
 });
 
@@ -270,8 +287,9 @@ gulp.task('serve:dist', ['default'], function() {
 gulp.task('default', ['clean'], function(cb) {
   // Uncomment 'cache-config' if you are going to use service workers.
   runSequence(
+    'bowertotmp'
     ['ensureFiles', 'copy', 'styles'],
-    ['images', 'fonts', 'html'],
+    'js', ['images', 'fonts', 'html'],
     'vulcanize', // 'cache-config',
     cb);
 });
